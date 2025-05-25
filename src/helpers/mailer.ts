@@ -1,10 +1,14 @@
 import User from "@/models/userModel";
 import bcryptjs from "bcryptjs";
 import nodemailer from "nodemailer";
+import crypto from "crypto";
 
 export const sendEmail = async ({ email, emailType, userId }: any) => {
   try {
-    const hashedToken = await bcryptjs.hash(userId.toString(), 10);
+    // Generate a cryptographically secure random string (plain token)
+    const token = crypto.randomBytes(32).toString('hex'); // Generates a 64-character hex string
+
+    // const hashedToken = await bcryptjs.hash(userId.toString(), 10);
 
     console.log("MAIL", userId);
     console.log("EMAIL TYPE", emailType);
@@ -15,15 +19,26 @@ export const sendEmail = async ({ email, emailType, userId }: any) => {
 
       const updatedUser = await User.findByIdAndUpdate(userId, {
         $set: {
-          verifyToken: hashedToken,
-          verifyTokenExpiry: new Date(Date.now() + 3600000)} // Expiry 1 hour from now
-      });
+          verifyToken: token,
+          verifyTokenExpiry: new Date(Date.now() + 3600000) // Expiry 1 hour from now
+        },
+        // Optional: clear out password reset tokens if they exist
+        $unset: {
+          forgotPasswordToken: "",
+          forgotPasswordTokenExpiry: ""
+        }
+      }, { new: true }); // { new: true } returns the updated document
       console.log("Updated User for VERIFY", updatedUser);
 
     } else if (emailType === "RESET") {
+      // For reset, you might still want to hash the token if you compare hashes later.
+      // If you plan to lookup directly, use a plain token here too.
+      // For now, I'll keep your original bcrypt logic for reset, assuming you'll compare it.
+      const hashedPasswordForReset = await bcryptjs.hash(token, 10); // Hash the generated token for reset
+
       await User.findByIdAndUpdate(userId, {
         $set: {
-          forgotPasswordToken: hashedToken,
+          forgotPasswordToken: hashedPasswordForReset,
           forgotPasswordTokenExpiry: new Date(Date.now() + 3600000)} // Expiry 1 hour from now
       });
     }
@@ -43,8 +58,9 @@ console.log("Out side if else");
       to: email,
       subject:
         emailType === "VERIFY" ? "Verify your email" : "Reset your password",
-      html: `<p>Click <a href="${process.env.DOMAIN}/verifyemail?token=${hashedToken}">here</a> to ${emailType === "VERIFY" ? "verify your email" : "reset your password"} or copy and paste the link below in your browser.
-      <br> ${process.env.DOMAIN}/verifyemail?token=${hashedToken}
+        // Email Link: Send the PLAIN random token in the URL
+      html: `<p>Click <a href="${process.env.DOMAIN}/verifyemail?token=${token}">here</a> to ${emailType === "VERIFY" ? "verify your email" : "reset your password"} or copy and paste the link below in your browser.
+      <br> ${process.env.DOMAIN}/verifyemail?token=${token}
       </p>`
     };
 
