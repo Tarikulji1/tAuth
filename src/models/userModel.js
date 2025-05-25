@@ -1,4 +1,4 @@
-import mongoose, { model, Schema } from "mongoose";
+import mongoose, {Schema} from "mongoose";
 
 const UserSchema = new mongoose.Schema({
     username: {
@@ -23,12 +23,10 @@ const UserSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    forgotPasswordToken: {
-        forgotPasswordToken: String,
-        forgotPasswordTokenExpiry: Date,
-        verifyToken: String,
-        verifyTokenExpiry: Date
-    },
+    forgotPasswordToken: String,
+    forgotPasswordTokenExpiry: Date,
+    verifyToken: String,
+    verifyTokenExpiry: Date,
 });
 
 const User = mongoose.models.users || mongoose.model("users", UserSchema);
